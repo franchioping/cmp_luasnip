@@ -5,16 +5,18 @@ local source = {}
 
 local defaults = {
 	use_show_condition = true,
-	show_autosnippets  = false,
+	show_autosnippets = false,
+	label_aliases = {},
 }
 
 -- the options are being passed via cmp.setup.sources, e.g.
 -- require('cmp').setup { sources = { { name = 'luasnip', opts = {...} } } }
 local function init_options(params)
-	params.option = vim.tbl_deep_extend('keep', params.option, defaults)
+	params.option = vim.tbl_deep_extend("keep", params.option, defaults)
 	vim.validate({
-		use_show_condition = { params.option.use_show_condition, 'boolean' },
-		show_autosnippets  = { params.option.show_autosnippets,  'boolean' },
+		use_show_condition = { params.option.use_show_condition, "boolean" },
+		show_autosnippets = { params.option.show_autosnippets, "boolean" },
+		label_aliases = { params.option.label_aliases, "table" },
 	})
 end
 
@@ -72,28 +74,28 @@ function source:complete(params, callback)
 		if not snip_cache[ft] then
 			-- ft not yet in cache.
 			local ft_items = {}
-			local ft_table = require("luasnip").get_snippets(ft, {type = "snippets"})
+			local ft_table = require("luasnip").get_snippets(ft, { type = "snippets" })
 			local iter_tab
 			if params.option.show_autosnippets then
-				local auto_table = require('luasnip').get_snippets(ft, {type="autosnippets"})
-				iter_tab = {{ft_table, false}, {auto_table, true}}
+				local auto_table = require("luasnip").get_snippets(ft, { type = "autosnippets" })
+				iter_tab = { { ft_table, false }, { auto_table, true } }
 			else
-				iter_tab = {{ft_table, false}}
+				iter_tab = { { ft_table, false } }
 			end
-			for _,ele in ipairs(iter_tab) do
-				local tab,auto = unpack(ele)
+			for _, ele in ipairs(iter_tab) do
+				local tab, auto = unpack(ele)
 				for j, snip in pairs(tab) do
 					if not snip.hidden then
 						ft_items[#ft_items + 1] = {
 							word = snip.trigger,
-							label = snip.trigger,
+							label = params.option.label_aliases[snip.trigger] or snip.trigger,
 							kind = cmp.lsp.CompletionItemKind.Snippet,
 							data = {
 								priority = snip.effective_priority or 1000, -- Default priority is used for old luasnip versions
 								filetype = ft,
 								snip_id = snip.id,
 								show_condition = snip.show_condition,
-								auto = auto
+								auto = auto,
 							},
 						}
 					end
@@ -148,9 +150,9 @@ function source:execute(completion_item, callback)
 	local clear_region = {
 		from = {
 			cursor[1],
-			cursor[2] - #completion_item.word
+			cursor[2] - #completion_item.word,
 		},
-		to = cursor
+		to = cursor,
 	}
 	if expand_params ~= nil then
 		if expand_params.clear_region ~= nil then
